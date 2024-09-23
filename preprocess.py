@@ -30,6 +30,8 @@ def parse_workout_data(workout_text):
                 for set_rep in sets_reps_list:
                     # Split weight and reps e.g. '30x8' => (30, 8)
                     weight, reps = set_rep.split("x")
+                    if "," in weight:
+                        weight = weight.replace(",", ".")
                     parsed_sets.append({"weight": float(weight), "reps": int(reps)})
                 
                 # Append data to the structured format
