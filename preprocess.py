@@ -71,13 +71,12 @@ def parse_workout_data(workout_text):
                 continue
             line = preprocessing(line)
 
-
-
             # Parse exercises, weights, reps, sets
             match = re.match(r"(?P<exercise>.+?)\s-\s(?P<sets_reps>.+)", line)
             if match and current_date:
                 exercise = match.group("exercise").strip()
                 sets_reps = match.group("sets_reps").strip()
+                drop = False
                 
                 # Separate the sets and reps, e.g., '30x8 - 52.5x5' => [(30, 8), (52.5, 5)]
                 sets_reps_list = re.findall(r"(\d+(?:,\d+)?(?:\.\d+)?(?:x\d+))", sets_reps)
@@ -87,7 +86,7 @@ def parse_workout_data(workout_text):
                     sets_reps_list = re.findall(r"\b[A-Z]+[A-Z0-9]*x\d+(?:[.,]\d+)?", sets_reps)
                 
                 parsed_sets = []
-                for set_rep in sets_reps_list:
+                for i, set_rep in enumerate(sets_reps_list):
                     # Split weight and reps e.g. '30x8' => (30, 8)
                     weight, reps = set_rep.split("x")
 
@@ -95,11 +94,20 @@ def parse_workout_data(workout_text):
                     if "," in weight:
                         weight = weight.replace(",", ".")
 
-                    # Convert reps to int
-                    parsed_sets.append({"weight": weight, "reps": reps})
+                    # check if the set is a drop set, adds it to parsed
+                    if "+" in sets_reps:
+                        drop_line = sets_reps
+                        drop_line = drop_line.replace(" ", "")
+                        index = drop_line.index(sets_reps_list[i])
+                        
+                        # skips first set because cannot be drop
+                        if i > 1:
+                            if drop_line[index-1:index] == "+":
+                                drop = True
 
-                # Output the parsed sets
-                print(parsed_sets)
+                    # Convert reps to int
+                    parsed_sets.append({"weight": weight, "reps": reps, "drop set": drop})
+
                 
                 # Append data to the structured format
                 data[current_date].append({
