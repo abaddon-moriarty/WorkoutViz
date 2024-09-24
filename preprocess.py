@@ -1,7 +1,7 @@
 import re
 import json
-from collections import defaultdict
 from tqdm import tqdm
+from collections import defaultdict
 
 # Function to parse workout data from a text block
 def parse_workout_data(workout_text):
@@ -18,8 +18,16 @@ def parse_workout_data(workout_text):
                 continue
 
             
-            # Normalise dropsets
-            # searches any amount of dropsets
+            # Searching for badly split exercice and sets_reps
+            pattern = r"^(?P<exercice>.+?)(?P<sets_reps>([0-9]{0,4}(,|.)?[0-9]{0,4}|\w{0,4})x[0-9]{1,4}(,|.)?[0-9]{0,4})"
+            split_error = re.search(pattern, line)
+            if split_error:
+                split_result = split_error.group('exercice')
+                if not "-" in split_result:
+                    # print(f"no - detected in {split_result}")
+                    line = re.sub(pattern, r"\g<exercice> - \g<sets_reps>", line)
+
+            # Searches any dropsets
             drop_sets = re.search(r"(?P<weight>[0-9]+,?[0-9]*)x(?P<set>[0-9]+,?[0-9]*)(?P<drop>/[0-9]+,?[0-9]*)+", line)
             if drop_sets:
                 new = re.sub(
@@ -27,6 +35,7 @@ def parse_workout_data(workout_text):
                     r"\g<weight>x\g<set> - \g<weight>x\g<drop>", 
                     line)
 
+                # This will run while there are "/" indicating dropsets in the data
                 while True:
                     rec_pattern = r"(?P<weight>[0-9]+,?[0-9]*)x/(?P<drop>[0-9]+,?[0-9]*)"
                     counting_drop_sets = re.search(r"(?P<drops>x(?:/[0-9]+)+)", new)
@@ -38,19 +47,14 @@ def parse_workout_data(workout_text):
                         break
                     
                     new = re.sub(rec_pattern, r"\g<weight>x\g<drop> - \g<weight>x", new)
-                    # print(new)
+
 
 
             # Parse exercises, weights, reps, sets
             match = re.match(r"(?P<exercise>.+?)\s-\s(?P<sets_reps>.+)", line)
-           
-
             if match and current_date:
                 exercise = match.group("exercise").strip()
-                # print(exercise)
-
                 sets_reps = match.group("sets_reps").strip()
-                # print(sets_reps)
                 
                 # Separate the sets and reps, e.g., '30x8 - 52.5x5' => [(30, 8), (52.5, 5)]
                 sets_reps_list = re.findall(r"(\d+(?:,\d+)?(?:\.\d+)?(?:x\d+))", sets_reps)
